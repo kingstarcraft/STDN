@@ -154,9 +154,9 @@ configs = {
 }
 
 
-class DenseNet(nn.Module):
+class STDN(nn.Module):
 
-    """DenseNet Architecture"""
+    """STDN Architecture"""
 
     def __init__(self,
                  config,
@@ -166,7 +166,7 @@ class DenseNet(nn.Module):
                  compress_factor=2,
                  expand_factor=4,
                  growth_rate=32):
-        super(DenseNet, self).__init__()
+        super(STDN, self).__init__()
         self.config = configs[config]
         self.channels = channels
         self.class_count = class_count
@@ -176,28 +176,49 @@ class DenseNet(nn.Module):
         self.expand_factor = expand_factor
         self.growth_rate = growth_rate
 
-        self.conv_net = self.get_conv_network()
-        self.fc_net = self.get_fc_net()
+        self.stem_block = self.get_stem_block()
+        self.dense_blocks = self.get_dense_blocks()
 
         self.init_weights()
 
-    def get_conv_network(self):
+    def get_stem_block(self):
+        """
+        returns the stem block of the STDN network
+        """
+        layers = []
+
+        layers.append(nn.BatchNorm2d(num_features=self.channels))
+        layers.append(nn.Conv2d(in_channels=self.channels,
+                                out_channels=self.num_features,
+                                kernel_size=3,
+                                stride=2,
+                                padding=1))
+
+        layers.append(nn.BatchNorm2d(num_features=self.num_features))
+        layers.append(nn.ReLU(inplace=True))
+        layers.append(nn.Conv2d(in_channels=self.num_features,
+                                out_channels=self.num_features,
+                                kernel_size=3,
+                                stride=1,
+                                padding=1))
+
+        layers.append(nn.BatchNorm2d(num_features=self.num_features))
+        layers.append(nn.ReLU(inplace=True))
+        layers.append(nn.Conv2d(in_channels=self.num_features,
+                                out_channels=self.num_features,
+                                kernel_size=3,
+                                stride=1,
+                                padding=1))
+
+        layers.append(nn.AvgPool2d(kernel_size=2, stride=2))
+
+        return nn.Sequential(*layers)
+
+    def get_dense_blocks(self):
         """
         returns the convolutional layers of the network
         """
         layers = []
-
-        layers.append(nn.Conv2d(in_channels=self.channels,
-                                out_channels=self.num_features,
-                                kernel_size=7,
-                                stride=2,
-                                padding=3,
-                                bias=False))
-        layers.append(nn.BatchNorm2d(num_features=self.num_features))
-        layers.append(nn.ReLU(inplace=True))
-        layers.append(nn.MaxPool2d(kernel_size=3,
-                                   stride=2,
-                                   padding=1))
 
         for i, num_layers in enumerate(self.config):
             layers.append(DenseBlock(in_channels=self.num_features,
@@ -214,19 +235,7 @@ class DenseNet(nn.Module):
 
                 self.num_features = out_channels
 
-        layers.append(nn.BatchNorm2d(num_features=self.num_features))
-        layers.append(nn.ReLU(inplace=True))
-        layers.append(nn.AvgPool2d(kernel_size=7,
-                                   stride=1))
-
         return nn.Sequential(*layers)
-
-    def get_fc_net(self):
-        """
-        returns the fully connected layers of the network
-        """
-        return nn.Linear(in_features=self.num_features,
-                         out_features=self.class_count)
 
     def init_weights(self):
         """
