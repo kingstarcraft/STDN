@@ -3,12 +3,14 @@ import torch
 import time
 import datetime
 
+from model import STDN
+
 
 class Solver(object):
 
     DEFAULTS = {}
 
-    def __init__(self, version, data_loader, config):
+    def __init__(self, version, train_data_loader, test_data_loader, config):
         """
         Initializes a Solver object
         """
@@ -16,7 +18,8 @@ class Solver(object):
         # data loader
         self.__dict__.update(Solver.DEFAULTS, **config)
         self.version = version
-        self.data_loader = data_loader
+        self.train_data_loader = train_data_loader
+        self.test_data_loader = test_data_loader
 
         self.build_model()
 
@@ -31,7 +34,14 @@ class Solver(object):
         Instantiates the model, loss criterion, and optimizer
         """
 
-        # TODO: instantiate model
+        # instantiate model
+        self.model = STDN(config=self.config,
+                          channels=self.input_channels,
+                          class_count=self.class_count,
+                          num_features=self.num_features,
+                          compress_factor=self.compress_factor,
+                          expand_factor=self.expand_factor,
+                          growth_rate=self.growth_rate)
 
         # TODO: instantiate loss criterion
 
